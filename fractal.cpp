@@ -1,86 +1,73 @@
 #include <SDL3/SDL.h>
 #include <vector>
-#include <cstdint> 
+#include <cstdint>
 #include <iostream>
 
-int main()
-{
-    // SDL 3 tutorial 
-    // run with command: g++ fractal.cpp -IC:\SDL3\include -LC:\SDL3\lib -lSDL3 -o fractal.exe
-
-    // initialize SDL  
+int main() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cout << "SDL failed to initialize: " << SDL_GetError() << "\n"; 
-        return 1; 
+        std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
+        return 1;
     }
 
-    int width = 900; 
-    int height = 600; 
+    int width = 900;
+    int height = 600;
 
-    // Create SDL window 
-    SDL_Window* window = SDL_CreateWindow(
-        "Mandelbrot Canvas", 
-        width,
-        height,
-        SDL_WINDOW_RESIZABLE 
-    );
-
+    SDL_Window* window = SDL_CreateWindow("Mandelbrot Canvas",
+                                          width, height,
+                                          SDL_WINDOW_RESIZABLE);
     if (!window) {
-        std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n"; 
-        SDL_Quit(); 
-        return 1; 
+        std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n";
+        SDL_Quit();
+        return 1;
     }
 
-    // Create renderer 
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, 0); 
-    
-    // If given renderer is null print error recieved by SDL and mvoe on with your life 
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, 0);
     if (!renderer) {
-        std::cout << "Renderer creation failed: " << SDL_GetError() << "\n"; 
+        std::cerr << "SDL_CreateRenderer failed: " << SDL_GetError() << "\n";
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
     }
 
-    // Create textures for mandelbrot set
     SDL_Texture* texture = SDL_CreateTexture(renderer,
-        SDL_PIXELFORMAT_RGBA8888, 
-        SDL_TEXTUREACCESS_STREAMING,
-        width, 
-        height); 
-    
-    
-    std::vector<uint32_t> pixels (width * height, 0); // dynamic array to hold pixel data
+                                             SDL_PIXELFORMAT_RGBA8888,
+                                             SDL_TEXTUREACCESS_STREAMING,
+                                             width, height);
 
-    // Now create event loop for handling running events 
+    std::vector<uint32_t> pixels(width * height, 0);
+
     bool running = true;
-    SDL_Event event; 
+    SDL_Event event;
 
     while (running) {
         while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
-                running = false; // In the event that the close button action is triggered 
+            if (event.type == SDL_EVENT_QUIT)
+                running = false;
+
+            if (event.type == SDL_EVENT_WINDOW_RESIZED) {
+                width = event.window.data1;
+                height = event.window.data2;
+                pixels.assign(width * height, 0);
+
+                SDL_DestroyTexture(texture);
+                texture = SDL_CreateTexture(renderer,
+                                            SDL_PIXELFORMAT_RGBA8888,
+                                            SDL_TEXTUREACCESS_STREAMING,
+                                            width, height);
             }
         }
-    
 
-        // Set screen black 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255); // hex for black
-        SDL_RenderClear(renderer); 
-
-        // Draw something 
-        SDL_FRect rect = {200.0f, 150.0f, 400.0f, 300.0f}; // initialize floats for SDL3, esp when initializing renderings 
-        SDL_RenderLine (renderer, 100.0f, 100.0f, 400.0f, 500.0f); 
-
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &rect);
-
-        // Present 
+        SDL_UpdateTexture(texture, nullptr, pixels.data(), width * sizeof(uint32_t));
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        SDL_RenderTexture(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer);
+        SDL_Delay(10);
     }
-    
+
+    SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
-    return 0;       
+    return 0;
 }
