@@ -16,7 +16,14 @@
 ---
 
 ### Demo
-You scroll up to zoom in and down to zoom out. The position of your mouse is what is being zoomed in to / out of. If you want to explore another part of this fractal, simply move your mouse to that part of the fractal. 
+You scroll up and down to zoom in and out. 
+
+The position of your mouse is what is being zoomed in to / out of. 
+
+If you want to explore another part of this fractal, simply move your mouse to that part of the fractal. 
+
+Below is how this program looks like. 
+
 <p align="center">
   <img src="assets/fracGIF.gif" width="600" alt="Mandelbrot Set Demo">
 </p>
@@ -34,12 +41,10 @@ Key concepts:
 
 ---
 
-<p align="center">
-  <sub>Built with ❤️ in C++</sub>
-</p>
+
 
 ### Installation instructions 
-There is absolutely no need to git clone this project, as there is already a .exe provided. 
+There is no need to git clone this project, as there is already a .exe provided. 
 
 You simply need to put the file **Fractal.exe** in the same folder as **SDL3.dll**. 
 
@@ -51,3 +56,6 @@ Demonstration here:
 
 There will be a lot of download and windows flags, just ignore those, as shown in the video. 
 
+<p align="center">
+  <sub>Built with ❤️ in C++</sub>
+</p>
