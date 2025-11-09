@@ -2,6 +2,7 @@
 #include <vector>
 #include <cstdint>
 #include <iostream>
+#include <thread>
 
 int main() {
 
@@ -12,14 +13,13 @@ int main() {
         return 1;
     }
 
-    // Sample width and height that are adjustable by SDL_WINDO_RESIZABLE 
+    // Sample width and height that are adjustable by SDL_WINDOW_RESIZABLE 
     int width = 900;
     int height = 600;
 
     SDL_Window* window = SDL_CreateWindow("Mandelbrot Canvas", 
                                           width, height,
                                           SDL_WINDOW_RESIZABLE);
-
 
     if (!window) {
         std::cerr << "SDL_CreateWindow failed: " << SDL_GetError() << "\n";
@@ -36,13 +36,16 @@ int main() {
         return 1;
     }
 
-    // Creation of texture given renderer object, width and height, other feilds give attributes to given texture 
+    // Creation of texture given renderer object, width and height, other fields give attributes to given texture 
     SDL_Texture* texture = SDL_CreateTexture(renderer,
                                              SDL_PIXELFORMAT_RGBA8888,
                                              SDL_TEXTUREACCESS_STREAMING,
                                              width, height);
 
-    std::vector<uint32_t> pixels(width * height, 0); // Initiallize dynamically changing pixels 
+    std::vector<uint32_t> pixels(width * height, 0); // Initialize dynamically changing pixels 
+
+    // Flag to indicate whether the Mandelbrot set needs to be recalculated
+    bool needsRedraw = true;
 
     // Now the fun stuff, the running of the actual window... 
 
@@ -64,66 +67,65 @@ int main() {
                                             SDL_PIXELFORMAT_RGBA8888,
                                             SDL_TEXTUREACCESS_STREAMING,
                                             width, height);
+                
+                needsRedraw = true; // Recalculate Mandelbrot on resize
             }
         }
 
+        if (needsRedraw) {
+            // MANDELBROT FORMULA GENERATION HERE: 
+            // A number is in the Mandelbrot set if successive iterations of the Mandelbrot formula don't diverge to infinity
 
-        // MANDELBROT FORMULA GENERATION HERE: 
-        // A number is in the mandelbrot set if sucessive iterations of the mandelbrot formula don't have an end behavior at infinity
+            // It is a good idea to not use #include <complex>, as that is slightly slower 
+            double minRe = -2.0;
+            double maxRe = 1.0;
+            double minIm = -1.2;
+            double maxIm = minIm + (maxRe - minRe) * height / width; 
+            int maxIter = 500; // Triple for loop for 500 iterations 
 
+            for (int y = 0; y < height; ++y) {
+                double c_im = maxIm - y * (maxIm - minIm) / (height - 1); // Calculate all imaginary C values in bounds
+                
+                for (int x = 0; x < width; ++x) {
+                    double c_re = minRe + x * (maxRe - minRe) / (width - 1); // all real C 
+                    double Z_re = c_re; // iterables are equated 
+                    double Z_im = c_im;
 
-        // It is a good idea to not use #include complex, as that is slightly slower 
-        double minRe = -2.0;
-        double maxRe = 1.0;
-        double minIm = -1.2;
-        double maxIm = minIm + (maxRe - minRe) * height / width; 
-        int maxIter = 500; // Triple for loop for 500 iterations lol 
+                    int iter; 
+                    for (iter = 0; iter < maxIter; ++iter) {
+                        double Z_re2 = Z_re * Z_re; // To quickly see if number is in set or not 
+                        double Z_im2 = Z_im * Z_im;
 
-        for (int y = 0; y < height; ++y) {
-            double c_im = maxIm - y * (maxIm - minIm) / (height - 1); // You calculate all imaginary C values in given bounds
-            
-            for (int x = 0; x < width; ++x) {
-                double c_re = minRe + x * (maxRe - minRe) / (width - 1); 
-                double Z_re = c_re;
-                double Z_im = c_im;
+                        if (Z_re2 + Z_im2 > 4.0) // if num ^ 2 > 4 that means its greater than 2... no time-heavy sqrt needed 
+                            break;
 
-                int iter; 
-                for (iter = 0; iter < maxIter; ++iter) {
-                    double Z_re2 = Z_re * Z_re;
-                    double Z_im2 = Z_im * Z_im;
+                        double new_re = Z_re2 - Z_im2 + c_re;
+                        double new_im = 2.0 * Z_re * Z_im + c_im;
+                        Z_re = new_re;
+                        Z_im = new_im;
+                    }
 
-                    if (Z_re2 + Z_im2 > 4.0)
-                        break;
-
-                    double new_re = Z_re2 - Z_im2 + c_re;
-                    double new_im = 2.0 * Z_re * Z_im + c_im;
-                    Z_re = new_re;
-                    Z_im = new_im;
+                    // Display array colors 
+                    uint8_t color = uint8_t(255 * iter / maxIter); 
+                    uint32_t pixelColor = 0xFF000000 | (color << 16) | (color << 8) | color;
+                    pixels[y * width + x] = pixelColor;
                 }
-
-                uint8_t color = uint8_t(255 * iter / maxIter);
-                uint32_t pixelColor = 0xFF000000 | (color << 16) | (color << 8) | color;
-                pixels[y * width + x] = pixelColor;
             }
-        }
 
+            needsRedraw = false; // Reset redraw flag
+        }
 
         // We update the texture with given dynamically allocated pixel vector 
-
         SDL_UpdateTexture(texture, nullptr, pixels.data(), width * sizeof(uint32_t));
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         SDL_RenderTexture(renderer, texture, nullptr, nullptr);
         SDL_RenderPresent(renderer);
-        
-        SDL_Delay(10); // delay to make ti easier on the CPU 
 
-
+        SDL_Delay(10); // Delay to make it easier on the CPU 
     }
 
-
     // Standard destructors on close 
-
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
