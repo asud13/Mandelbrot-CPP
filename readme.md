@@ -16,13 +16,6 @@
 ---
 
 ### Demo
-You scroll up and down to zoom in and out. 
-
-The position of your mouse is what is being zoomed in to / out of. 
-
-If you want to explore another part of this fractal, simply move your mouse to that part of the fractal. 
-
-Below is how this program looks like. 
 
 <p align="center">
   <img src="assets/fracGIF.gif" width="600" alt="Mandelbrot Set Demo">
@@ -54,6 +47,17 @@ Demonstration here:
 </p>
 
 There will be a lot of download and windows flags, just ignore those, as shown in the video. 
+
+---
+### How to use the program 
+
+ou scroll up and down to zoom in and out. 
+
+The position of your mouse is what is being zoomed in to / out of. 
+
+If you want to explore another part of this fractal, simply move your mouse to that part of the fractal. 
+
+Below is how this program looks like. 
 
 ---
 ### What I did 
