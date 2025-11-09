@@ -42,7 +42,6 @@ Key concepts:
 ---
 
 
-
 ### Installation instructions 
 There is no need to git clone this project, as there is already a .exe provided. 
 
@@ -56,6 +55,25 @@ Demonstration here:
 
 There will be a lot of download and windows flags, just ignore those, as shown in the video. 
 
+### What I did 
+
+I used SDL3 as a way to graphically represent this fractal. 
+
+Each pixel on the screen corresponds to a point on the complex plane. 
+
+By iterating this formula many times and mapping distance to escape to different colors, we can create the mesmerizing patterns of the mandelbrot set. 
+
+### Multithreading 
+
+- Rendering a Mandelbrot fractal uses millions of pixel computations, therefore I used **parallelization** to make this fractal efficient. 
+- Threads run concurrently 
+- Once finished, they update pixel buffer and then prompt SDL3 to display these pixels. 
+
+### Other Optimizations 
+- Early escape checks where we terminate iteration immediately upon divergence, rather than letting unchecked loop run. 
+- Loop unrolling to minimize branching 
+- Frame caching to minimize redraws by only updating upon zoom. 
+
 <p align="center">
-  <sub>Built with ❤️ in C++</sub>
+  <sub>Built with C++ and ❤️</sub>
 </p>
