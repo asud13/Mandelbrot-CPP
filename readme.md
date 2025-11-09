@@ -77,6 +77,7 @@ By iterating this formula many times and mapping distance to escape to different
 - Loop unrolling to minimize branching 
 - Frame caching to minimize redraws by only updating upon zoom. 
 
+'''
 <p align="center">
   <sub>Built with C++ and ❤️</sub>
 </p>
