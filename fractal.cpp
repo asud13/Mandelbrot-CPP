@@ -4,7 +4,43 @@
 #include <iostream>
 #include <thread>
 
+// Function to compute a portion of the Mandelbrot set (used for multithreading)
+void computeMandelbrotSection(std::vector<uint32_t>& pixels, int width, int height,
+                              double minRe, double maxRe, double minIm, double maxIm,
+                              int maxIter, int yStart, int yEnd) {
+    for (int y = yStart; y < yEnd; ++y) {
+        double c_im = maxIm - y * (maxIm - minIm) / (height - 1);
+
+        for (int x = 0; x < width; ++x) {
+            double c_re = minRe + x * (maxRe - minRe) / (width - 1);
+            double Z_re = c_re;
+            double Z_im = c_im;
+
+            int iter;
+            for (iter = 0; iter < maxIter; ++iter) {
+                double Z_re2 = Z_re * Z_re;
+                double Z_im2 = Z_im * Z_im;
+
+                if (Z_re2 + Z_im2 > 4.0)
+                    break;
+
+                double new_re = Z_re2 - Z_im2 + c_re;
+                double new_im = 2.0 * Z_re * Z_im + c_im;
+                Z_re = new_re;
+                Z_im = new_im;
+            }
+
+            uint8_t color = uint8_t(255 * iter / maxIter);
+            uint32_t pixelColor = 0xFF000000 | (color << 16) | (color << 8) | color;
+            pixels[y * width + x] = pixelColor;
+        }
+    }
+}
+
 int main() {
+
+    // to compile: 
+    // g++ fractal.cpp -IC:\SDL3\include -LC:\SDL3\lib -lSDL3 -o fractal.exe
 
     // SDL INIT VIDEO: 
     // Initializes SDL video subsystem where you create windows, renderers and graphic displays 
@@ -51,6 +87,13 @@ int main() {
 
     bool running = true;
     SDL_Event event;
+    
+    // Mandelbrot bounds and iteration count
+    double minRe = -2.0;
+    double maxRe = 1.0;
+    double minIm = -1.2;
+    double maxIm = minIm + (maxRe - minRe) * height / width; 
+    int maxIter = 500; // Triple for loop for 500 iterations 
 
     while (running) {
         while (SDL_PollEvent(&event)) {
@@ -70,47 +113,51 @@ int main() {
                 
                 needsRedraw = true; // Recalculate Mandelbrot on resize
             }
+
+            if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+                double zoomFactor = (event.wheel.y > 0) ? 0.9 : 1.1; // scroll up to zoom in, down to zoom out
+
+                // Get current mouse position in window coordinates
+                float mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+
+                // now let's convert mouse coordinates to mathematically outputted equivalence
+                double mouseRe = minRe + mouseX * (maxRe - minRe) / width; 
+                double mouseIm = maxIm - mouseY * (maxIm - minIm) / height;
+
+                // Adjust bounds to zoom relative to mouse
+                double newWidth = (maxRe - minRe) * zoomFactor;
+                double newHeight = (maxIm - minIm) * zoomFactor;
+
+                minRe = mouseRe - newWidth * (mouseX / width);
+                maxRe = minRe + newWidth;
+                minIm = mouseIm - newHeight * (1.0 - mouseY / height);
+                maxIm = minIm + newHeight;
+
+                needsRedraw = true; // Recalculate Mandelbrot set after zoom
+            }
         }
 
         if (needsRedraw) {
-            // MANDELBROT FORMULA GENERATION HERE: 
-            // A number is in the Mandelbrot set if successive iterations of the Mandelbrot formula don't diverge to infinity
+            // Multithreading setup: split the screen into sections
+            unsigned int nThreads = std::thread::hardware_concurrency();
+            if (nThreads == 0) nThreads = 4; // fallback if detection fails
+            std::vector<std::thread> threads;
 
-            // It is a good idea to not use #include <complex>, as that is slightly slower 
-            double minRe = -2.0;
-            double maxRe = 1.0;
-            double minIm = -1.2;
-            double maxIm = minIm + (maxRe - minRe) * height / width; 
-            int maxIter = 500; // Triple for loop for 500 iterations 
+            int rowsPerThread = height / nThreads;
 
-            for (int y = 0; y < height; ++y) {
-                double c_im = maxIm - y * (maxIm - minIm) / (height - 1); // Calculate all imaginary C values in bounds
-                
-                for (int x = 0; x < width; ++x) {
-                    double c_re = minRe + x * (maxRe - minRe) / (width - 1); // all real C 
-                    double Z_re = c_re; // iterables are equated 
-                    double Z_im = c_im;
+            for (unsigned int i = 0; i < nThreads; ++i) {
+                int yStart = i * rowsPerThread;
+                int yEnd = (i == nThreads - 1) ? height : yStart + rowsPerThread;
 
-                    int iter; 
-                    for (iter = 0; iter < maxIter; ++iter) {
-                        double Z_re2 = Z_re * Z_re; // To quickly see if number is in set or not 
-                        double Z_im2 = Z_im * Z_im;
-
-                        if (Z_re2 + Z_im2 > 4.0) // if num ^ 2 > 4 that means its greater than 2... no time-heavy sqrt needed 
-                            break;
-
-                        double new_re = Z_re2 - Z_im2 + c_re;
-                        double new_im = 2.0 * Z_re * Z_im + c_im;
-                        Z_re = new_re;
-                        Z_im = new_im;
-                    }
-
-                    // Display array colors 
-                    uint8_t color = uint8_t(255 * iter / maxIter); 
-                    uint32_t pixelColor = 0xFF000000 | (color << 16) | (color << 8) | color;
-                    pixels[y * width + x] = pixelColor;
-                }
+                threads.emplace_back(computeMandelbrotSection,
+                                     std::ref(pixels),
+                                     width, height,
+                                     minRe, maxRe, minIm, maxIm,
+                                     maxIter, yStart, yEnd);
             }
+
+            for (auto& t : threads) t.join(); // wait for all threads to finish
 
             needsRedraw = false; // Reset redraw flag
         }
