@@ -51,7 +51,7 @@ There will be a lot of download and windows flags, just ignore those, as shown i
 ---
 ### How to use the program 
 
-ou scroll up and down to zoom in and out. 
+Scroll up and down to zoom in and out. 
 
 The position of your mouse is what is being zoomed in to / out of. 
 
