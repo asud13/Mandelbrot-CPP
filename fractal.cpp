@@ -3,11 +3,15 @@
 #include <cstdint>
 #include <iostream>
 #include <thread>
+#include <unordered_map>
+#include <cmath> 
 
 // Function to compute a portion of the Mandelbrot set (used for multithreading)
 void computeMandelbrotSection(std::vector<uint32_t>& pixels, int width, int height,
                               double minRe, double maxRe, double minIm, double maxIm,
-                              int maxIter, int yStart, int yEnd) {
+                              int maxIter, int yStart, int yEnd) 
+{
+    
     for (int y = yStart; y < yEnd; ++y) {
         double c_im = maxIm - y * (maxIm - minIm) / (height - 1);
 
@@ -35,15 +39,18 @@ void computeMandelbrotSection(std::vector<uint32_t>& pixels, int width, int heig
             pixels[y * width + x] = pixelColor;
         }
     }
+
 }
 
 int main() {
-
+    std::unordered_map<SDL_FingerID, SDL_TouchFingerEvent> fingers; // for mobile interaction 
+    
     // to compile: 
     // g++ fractal.cpp -IC:\SDL3\include -LC:\SDL3\lib -lSDL3 -o fractal.exe
 
     // SDL INIT VIDEO: 
     // Initializes SDL video subsystem where you create windows, renderers and graphic displays 
+    
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << "\n";
         return 1;
@@ -95,6 +102,12 @@ int main() {
     double maxIm = minIm + (maxRe - minRe) * height / width; 
     int maxIter = 500; // Triple for loop for 500 iterations 
 
+    // Gesture tracking for mobile
+    float lastFingerX = 0.0f;
+    float lastFingerY = 0.0f;
+    double lastPinchDist = 0.0;
+    bool isDragging = false;
+
     while (running) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_EVENT_QUIT) // User may exit at any time
@@ -114,14 +127,93 @@ int main() {
                 needsRedraw = true; // Recalculate Mandelbrot on resize
             }
 
+            // If fingers 
+            if (event.type == SDL_EVENT_FINGER_DOWN || event.type == SDL_EVENT_FINGER_MOTION)
+                fingers[event.tfinger.fingerID] = event.tfinger;
+
+            if (event.type == SDL_EVENT_FINGER_UP)
+                fingers.erase(event.tfinger.fingerID);
+
+            // two fingers 
+            if (fingers.size() == 2) {
+                auto it = fingers.begin();
+                SDL_TouchFingerEvent f1 = it->second; // first finger
+                ++it;
+                SDL_TouchFingerEvent f2 = it->second; // second finger
+
+                // distance b/w fingers 
+                double dist = hypot(f1.x - f2.x, f1.y - f2.y);
+
+                if (lastPinchDist == 0.0) lastPinchDist = dist;
+
+                // Determine zoom 
+                double zoomFactor = (dist > lastPinchDist) ? 0.9 : 1.1;
+
+                double midX = (f1.x + f2.x) / 2.0;
+                double midY = (f1.y + f2.y) / 2.0;
+
+                double mouseRe = minRe + midX * (maxRe - minRe);
+                double mouseIm = maxIm - midY * (maxIm - minIm);
+
+                double newWidth = (maxRe - minRe) * zoomFactor;
+                double newHeight = (maxIm - minIm) * zoomFactor;
+
+                // Update fractal bounds relative to zoom focal point
+                minRe = mouseRe - newWidth * midX;
+                maxRe = minRe + newWidth;
+                minIm = mouseIm - newHeight * (1.0 - midY);
+                maxIm = minIm + newHeight;
+
+                needsRedraw = true;       
+                lastPinchDist = dist;     
+            } 
+            else 
+            {
+                lastPinchDist = 0.0;       
+            }
+
+            // 1 finger
+            if (fingers.size() == 1) {
+                auto it = fingers.begin();
+                SDL_TouchFingerEvent f = it->second;
+
+                // Initialize last finger position if this is the start of a drag
+                if (!isDragging) {
+                    lastFingerX = f.x;
+                    lastFingerY = f.y;
+                    isDragging = true;
+                }
+
+                // Compute delta movement of finger
+                double dx = f.x - lastFingerX;
+                double dy = f.y - lastFingerY;
+
+                // Adjust fractal bounds based on finger movement
+                minRe -= dx * (maxRe - minRe);
+                maxRe -= dx * (maxRe - minRe);
+                minIm += dy * (maxIm - minIm);
+                maxIm += dy * (maxIm - minIm);
+
+                // Update last finger position
+                lastFingerX = f.x;
+                lastFingerY = f.y;
+
+                needsRedraw = true;     
+            } 
+            else 
+            {
+                isDragging = false;        // reset dragging flag if no finger or multitouch
+            }
+
+
+
             if (event.type == SDL_EVENT_MOUSE_WHEEL) {
                 double zoomFactor = (event.wheel.y > 0) ? 0.9 : 1.1; // scroll up to zoom in, down to zoom out
 
-                // Get current mouse position in window coordinates
+                // get current mouse position in window coordinates
                 float mouseX, mouseY;
                 SDL_GetMouseState(&mouseX, &mouseY);
 
-                // now let's convert mouse coordinates to mathematically outputted equivalence
                 double mouseRe = minRe + mouseX * (maxRe - minRe) / width; 
                 double mouseIm = maxIm - mouseY * (maxIm - minIm) / height;
 
@@ -137,6 +229,8 @@ int main() {
                 needsRedraw = true; // Recalculate Mandelbrot set after zoom
             }
         }
+
+        
 
         if (needsRedraw) {
             // Multithreading setup: split the screen into sections
