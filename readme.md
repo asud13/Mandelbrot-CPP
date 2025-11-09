@@ -9,8 +9,8 @@
 ### Learn More
 <p align="center">
   Please watch 
-  <a href="https://www.youtube.com/watch?v=2JUAojvFpCo" target="_blank"><b>this simple video</b></a> 
-  to get a visual explanation of how the Mandelbrot fractal works.
+  <a href="https://www.youtube.com/watch?v=2JUAojvFpCo" target="_blank"><b>this quick video</b></a> 
+  to get a general idea of how the Mandelbrot fractal works.
 </p>
 
 ---
